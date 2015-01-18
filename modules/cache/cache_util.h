@@ -195,6 +195,9 @@ typedef struct {
     unsigned int store_nostore_set:1;
     unsigned int enable_set:1;
     unsigned int disable_set:1;
+    /* treat maxex as hard limit */
+    unsigned int hardmaxex:1;
+    unsigned int hardmaxex_set:1;
 } cache_dir_conf;
 
 /* A linked-list of authn providers. */
