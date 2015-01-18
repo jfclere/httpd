@@ -1427,6 +1427,11 @@ static apr_status_t cache_save_filter(ap_filter_t *f, apr_bucket_brigade *in)
             exp = date + dconf->defex;
         }
     }
+    /* else, forcibly cap the expiry date if required */
+    else if (dconf->hardmaxex && (date + dconf->maxex) < exp) {
+        exp = date + dconf->maxex;
+    }        
+
     info->expire = exp;
 
     /* We found a stale entry which wasn't really stale. */
@@ -1913,7 +1918,9 @@ static void *create_dir_config(apr_pool_t *p, char *dummy)
 
     /* array of providers for this URL space */
     dconf->cacheenable = apr_array_make(p, 10, sizeof(struct cache_enable));
-
+    /* flag; treat maxex as hard limit */
+    dconf->hardmaxex = 0;
+    dconf->hardmaxex_set = 0;
     return dconf;
 }
 
@@ -1963,7 +1970,10 @@ static void *merge_dir_config(apr_pool_t *p, void *basev, void *addv) {
     new->enable_set = add->enable_set || base->enable_set;
     new->disable = (add->disable_set == 0) ? base->disable : add->disable;
     new->disable_set = add->disable_set || base->disable_set;
-
+    new->hardmaxex = 
+        (add->hardmaxex_set == 0)
+        ? base->hardmaxex
+        : add->hardmaxex;
     return new;
 }
 
@@ -2292,12 +2302,18 @@ static const char *add_cache_disable(cmd_parms *parms, void *dummy,
 }
 
 static const char *set_cache_maxex(cmd_parms *parms, void *dummy,
-                                   const char *arg)
+                                   const char *arg, const char *hard)
 {
     cache_dir_conf *dconf = (cache_dir_conf *)dummy;
 
     dconf->maxex = (apr_time_t) (atol(arg) * MSEC_ONE_SEC);
     dconf->maxex_set = 1;
+    
+    if (hard && strcasecmp(hard, "hard") == 0) {
+        dconf->hardmaxex = 1;
+        dconf->hardmaxex_set = 1;
+    }
+
     return NULL;
 }
 
@@ -2505,7 +2521,7 @@ static const command_rec cache_cmds[] =
                    "caching is enabled"),
     AP_INIT_TAKE1("CacheDisable", add_cache_disable, NULL, RSRC_CONF|ACCESS_CONF,
                   "A partial URL prefix below which caching is disabled"),
-    AP_INIT_TAKE1("CacheMaxExpire", set_cache_maxex, NULL, RSRC_CONF|ACCESS_CONF,
+    AP_INIT_TAKE12("CacheMaxExpire", set_cache_maxex, NULL, RSRC_CONF|ACCESS_CONF,
                   "The maximum time in seconds to cache a document"),
     AP_INIT_TAKE1("CacheMinExpire", set_cache_minex, NULL, RSRC_CONF|ACCESS_CONF,
                   "The minimum time in seconds to cache a document"),
