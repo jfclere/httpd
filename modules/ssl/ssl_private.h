@@ -98,6 +98,8 @@
 #include <openssl/x509_vfy.h>
 #include <openssl/ocsp.h>
 
+#include "mod_ssl.h"
+
 /* Avoid tripping over an engine build installed globally and detected
  * when the user points at an explicit non-engine flavor of OpenSSL
  */
@@ -137,6 +139,11 @@
 
 #if (OPENSSL_VERSION_NUMBER >= 0x009080a0) && defined(OPENSSL_FIPS)
 #define HAVE_FIPS
+#endif
+
+#if OPENSSL_VERSION_NUMBER >= 0x10001000L && !defined(OPENSSL_NO_NEXTPROTONEG) \
+    && !defined(OPENSSL_NO_TLSEXT)
+#define HAVE_TLS_NPN
 #endif
 
 #if (OPENSSL_VERSION_NUMBER >= 0x10000000)
@@ -486,6 +493,12 @@ typedef struct {
         RENEG_ABORT /* Renegotiation initiated by client, abort the
                      * connection */
     } reneg_state;
+
+#ifdef HAVE_TLS_NPN
+    /* Poor man's inter-module optional hooks for NPN. */
+    apr_array_header_t *npn_advertfns; /* list of ssl_npn_advertise_protos callbacks */
+    apr_array_header_t *npn_negofns; /* list of ssl_npn_proto_negotiated callbacks. */
+#endif
 
     server_rec *server;
 } SSLConnRec;
@@ -842,6 +855,7 @@ int          ssl_callback_ServerNameIndication(SSL *, int *, modssl_ctx_t *);
 int         ssl_callback_SessionTicket(SSL *, unsigned char *, unsigned char *,
                                        EVP_CIPHER_CTX *, HMAC_CTX *, int);
 #endif
+int ssl_callback_AdvertiseNextProtos(SSL *ssl, const unsigned char **data, unsigned int *len, void *arg);
 
 /**  Session Cache Support  */
 void         ssl_scache_init(server_rec *, apr_pool_t *);
