@@ -26,15 +26,17 @@
 #include "apu_config.h"
 
 #if defined(HAVE_XMLPARSE_XMLPARSE_H)
-#include <xmlparse/xmlparse.h>
+#include "xmlparse/xmlparse.h"
 #elif defined(HAVE_XMLTOK_XMLPARSE_H)
-#include <xmltok/xmlparse.h>
+#include "xmltok/xmlparse.h"
 #elif defined(HAVE_XML_XMLPARSE_H)
-#include <xml/xmlparse.h>
+#include "xml/xmlparse.h"
 #else
-#include <expat.h>
+#include "expat.h"
 #endif
 
+#undef  XML_MAJOR_VERSION
+#define XML_MAJOR_VERSION 1
 #define DEBUG_CR "\r\n"
 
 static const char APR_KW_xmlns[] = { 0x78, 0x6D, 0x6C, 0x6E, 0x73, '\0' };
