@@ -48,7 +48,11 @@
 #ifndef THREAD_PROC_H
 #define THREAD_PROC_H
 
-#define SHELL_PATH "/bin/sh"
+#ifdef SOLARIS2
+# define SHELL_PATH "/usr/xpg4/bin/sh"
+#else
+# define SHELL_PATH "/bin/sh"
+#endif
 
 #if APR_HAS_THREADS
 
