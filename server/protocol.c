@@ -1043,6 +1043,7 @@ request_rec *ap_read_request(conn_rec *conn)
      * now read. may update status.
      */
     ap_update_vhost_from_headers(r);
+    access_status = r->status;
 
     /* Toggle to the Host:-based vhost's timeout mode to fetch the
      * request body and send the response body, if needed.
