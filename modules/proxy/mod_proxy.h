@@ -249,6 +249,7 @@ typedef struct {
     unsigned int need_flush:1; /* Flag to decide whether we need to flush the
                                 * filter chain or not */
     unsigned int inreslist:1;  /* connection in apr_reslist? */
+    const char   *uds_path;    /* Unix domain socket path */
 } proxy_conn_rec;
 
 typedef struct {
@@ -269,6 +270,7 @@ struct proxy_conn_pool {
 #define PROXY_WORKER_INITIALIZED    0x0001
 #define PROXY_WORKER_IGNORE_ERRORS  0x0002
 #define PROXY_WORKER_DRAIN          0x0004
+#define PROXY_WORKER_GENERIC        0x0008
 #define PROXY_WORKER_IN_SHUTDOWN    0x0010
 #define PROXY_WORKER_DISABLED       0x0020
 #define PROXY_WORKER_STOPPED        0x0040
@@ -280,6 +282,7 @@ struct proxy_conn_pool {
 #define PROXY_WORKER_INITIALIZED_FLAG    'O'
 #define PROXY_WORKER_IGNORE_ERRORS_FLAG  'I'
 #define PROXY_WORKER_DRAIN_FLAG          'N'
+#define PROXY_WORKER_GENERIC_FLAG        'G'
 #define PROXY_WORKER_IN_SHUTDOWN_FLAG    'U'
 #define PROXY_WORKER_DISABLED_FLAG       'D'
 #define PROXY_WORKER_STOPPED_FLAG        'S'
@@ -299,6 +302,8 @@ PROXY_WORKER_DISABLED | PROXY_WORKER_STOPPED | PROXY_WORKER_IN_ERROR )
   PROXY_WORKER_IS_INITIALIZED(f) )
 
 #define PROXY_WORKER_IS_DRAINING(f)   ( (f)->s->status &  PROXY_WORKER_DRAIN )
+
+#define PROXY_WORKER_IS_GENERIC(f)   ( (f)->s->status &  PROXY_WORKER_GENERIC )
 
 /* default worker retry timeout in seconds */
 #define PROXY_WORKER_DEFAULT_RETRY    60
@@ -341,6 +346,7 @@ typedef struct {
     char      route[PROXY_WORKER_MAX_ROUTE_SIZE];     /* balancing route */
     char      redirect[PROXY_WORKER_MAX_ROUTE_SIZE];  /* temporary balancing redirection route */
     char      flusher[PROXY_WORKER_MAX_SCHEME_SIZE];  /* flush provider used by mod_proxy_fdpass */
+    char      uds_path[PROXY_WORKER_MAX_NAME_SIZE];   /* path to worker's unix domain socket if applicable */
     int             lbset;      /* load balancer cluster set */
     int             retries;    /* number of retries on this worker */
     int             lbstatus;   /* Current lbstatus */
@@ -387,6 +393,7 @@ typedef struct {
     unsigned int     keepalive_set:1;
     unsigned int     disablereuse_set:1;
     unsigned int     was_malloced:1;
+    unsigned int     is_name_matchable:1;
 } proxy_worker_shared;
 
 #define ALIGNED_PROXY_WORKER_SHARED_SIZE (APR_ALIGN_DEFAULT(sizeof(proxy_worker_shared)))
@@ -586,6 +593,16 @@ typedef __declspec(dllimport) const char *
 
 /* Connection pool API */
 /**
+ * Return the user-land, UDS aware worker name
+ * @param p        memory pool used for displaying worker name
+ * @param worker   the worker
+ * @return         name
+ */
+
+PROXY_DECLARE(char *) ap_proxy_worker_name(apr_pool_t *p,
+                                           proxy_worker *worker);
+
+/**
  * Get the worker from proxy configuration
  * @param p        memory pool used for finding worker
  * @param balancer the balancer that the worker belongs to
@@ -608,6 +625,24 @@ PROXY_DECLARE(proxy_worker *) ap_proxy_get_worker(apr_pool_t *p,
  * @return          error message or NULL if successful (*worker is new worker)
  */
 PROXY_DECLARE(char *) ap_proxy_define_worker(apr_pool_t *p,
+                                             proxy_worker **worker,
+                                             proxy_balancer *balancer,
+                                             proxy_server_conf *conf,
+                                             const char *url,
+                                             int do_malloc);
+
+/**
+ * Define and Allocate space for the ap_strcmp_match()able worker to proxy
+ * configuration.
+ * @param p         memory pool to allocate worker from
+ * @param worker    the new worker
+ * @param balancer  the balancer that the worker belongs to
+ * @param conf      current proxy server configuration
+ * @param url       url containing worker name (produces match pattern)
+ * @param do_malloc true if shared struct should be malloced
+ * @return          error message or NULL if successful (*worker is new worker)
+ */
+PROXY_DECLARE(char *) ap_proxy_define_match_worker(apr_pool_t *p,
                                              proxy_worker **worker,
                                              proxy_balancer *balancer,
                                              proxy_server_conf *conf,
@@ -982,6 +1017,13 @@ APR_DECLARE_OPTIONAL_FN(int, ap_proxy_clear_connection,
  * @return  number of workers to allocate in the scoreboard
  */
 int ap_proxy_lb_workers(void);
+
+/**
+ * Return the port number of a known scheme (eg: http -> 80).
+ * @param scheme        scheme to test
+ * @return              port number or 0 if unknown
+ */
+PROXY_DECLARE(apr_port_t) ap_proxy_port_of_scheme(const char *scheme);
 
 extern module PROXY_DECLARE_DATA proxy_module;
 
