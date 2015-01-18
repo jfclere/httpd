@@ -483,6 +483,11 @@ getloadavg
 dnl confirm that a void pointer is large enough to store a long integer
 APACHE_CHECK_VOID_PTR_LEN
 
+AC_CHECK_LIB(selinux, is_selinux_enabled, [
+   AC_DEFINE(HAVE_SELINUX, 1, [Defined if SELinux is supported])
+   APR_ADDTO(AP_LIBS, [-lselinux])
+])
+
 AC_CACHE_CHECK([for gettid()], ac_cv_gettid,
 [AC_TRY_RUN(#define _GNU_SOURCE
 #include <unistd.h>

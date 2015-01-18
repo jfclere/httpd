@@ -58,6 +58,10 @@
 #include <unistd.h>
 #endif
 
+#ifdef HAVE_SELINUX
+#include <selinux/selinux.h>
+#endif
+
 /* LimitRequestBody handling */
 #define AP_LIMIT_REQ_BODY_UNSET         ((apr_off_t) -1)
 #define AP_DEFAULT_LIMIT_REQ_BODY       ((apr_off_t) 0)
@@ -4500,6 +4504,28 @@ static int core_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *pte
             } else {
                 ap_log_error(APLOG_MARK, APLOG_NOTICE, errno, NULL,
                              "core dump file size is zero, setrlimit failed");
+            }
+        }
+    }
+#endif
+
+#ifdef HAVE_SELINUX
+    {
+        static int already_warned = 0;
+        int is_enabled = is_selinux_enabled() > 0;
+        
+        if (is_enabled && !already_warned) {
+            security_context_t con;
+            
+            if (getcon(&con) == 0) {
+                
+                ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL,
+                             "SELinux policy enabled; "
+                             "httpd running as context %s", con);
+                
+                already_warned = 1;
+                
+                freecon(con);
             }
         }
     }
