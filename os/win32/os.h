@@ -44,6 +44,19 @@
 #define PLATFORM "Win32"
 #endif
 
+/**
+* Added by RHATews
+*/
+#define HTTPD_ROOT "/jws-3.0"
+#define DOCUMENT_LOCATION "var/www"
+#define SERVER_CONFIG_FILE "etc/httpd/conf/httpd.conf"
+#define AP_TYPES_CONFIG_FILE "conf/mime.types"
+#define DEFAULT_ERRORLOG "logs/error.log"
+#define DEFAULT_SCOREBOARD "run/apache_runtime_status"
+/*
+* End of RHATews specifics
+*/
+
 /* Define command-line rewriting for this platform, handled by core.
  * For Windows, this is currently handled inside the WinNT MPM.
  * XXX To support a choice of MPMs, extract common platform behavior
