@@ -251,7 +251,7 @@ static apr_status_t send_begin_request(proxy_conn_rec *conn, int request_id)
 
     brb.roleB1 = ((FCGI_RESPONDER >> 8) & 0xff);
     brb.roleB0 = ((FCGI_RESPONDER) & 0xff);
-    brb.flags = FCGI_KEEP_CONN;
+    brb.flags = ap_proxy_connection_reusable(conn) ? FCGI_KEEP_CONN : 0;
     brb.reserved[0] = 0;
     brb.reserved[1] = 0;
     brb.reserved[2] = 0;
