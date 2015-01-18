@@ -55,6 +55,7 @@ SSLModConfigRec *ssl_config_global_create(server_rec *s)
     mc = (SSLModConfigRec *)apr_palloc(pool, sizeof(*mc));
     mc->pPool = pool;
     mc->bFixed = FALSE;
+    mc->sni_required = FALSE;
 
     /*
      * initialize per-module configuration

@@ -307,7 +307,7 @@ int ssl_init_Module(apr_pool_t *p, apr_pool_t *plog,
     /*
      * Configuration consistency checks
      */
-    ssl_init_CheckServers(base_server, ptemp);
+    ssl_init_CheckServers(mc, base_server, ptemp);
 
     /*
      *  Announce mod_ssl and SSL library in HTTP Server field
@@ -1400,7 +1400,7 @@ void ssl_init_ConfigureServer(server_rec *s,
     }
 }
 
-void ssl_init_CheckServers(server_rec *base_server, apr_pool_t *p)
+void ssl_init_CheckServers(SSLModConfigRec *mc, server_rec *base_server, apr_pool_t *p)
 {
     server_rec *s, *ps;
     SSLSrvConfigRec *sc;
@@ -1482,6 +1482,7 @@ void ssl_init_CheckServers(server_rec *base_server, apr_pool_t *p)
     }
 
     if (conflict) {
+        mc->sni_required = TRUE;
 #ifdef OPENSSL_NO_TLSEXT
         ap_log_error(APLOG_MARK, APLOG_WARNING, 0, base_server, APLOGNO(01917)
                      "Init: You should not use name-based "
