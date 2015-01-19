@@ -53,10 +53,15 @@ static void  ssl_var_lookup_ssl_cipher_bits(SSL *ssl, int *usekeysize, int *algk
 static char *ssl_var_lookup_ssl_version(apr_pool_t *p, char *var);
 static char *ssl_var_lookup_ssl_compress_meth(SSL *ssl);
 
+static APR_OPTIONAL_FN_TYPE(ssl_is_https) *othermod_is_https;
+static APR_OPTIONAL_FN_TYPE(ssl_var_lookup) *othermod_var_lookup;
+
 static int ssl_is_https(conn_rec *c)
 {
     SSLConnRec *sslconn = myConnConfig(c);
-    return sslconn && sslconn->ssl;
+    
+    return (sslconn && sslconn->ssl)
+        || (othermod_is_https && othermod_is_https(c));
 }
 
 static const char var_interface[] = "mod_ssl/" AP_SERVER_BASEREVISION;
@@ -105,6 +110,9 @@ static int ssl_expr_lookup(ap_expr_lookup_parms *parms)
 void ssl_var_register(apr_pool_t *p)
 {
     char *cp, *cp2;
+
+    othermod_is_https = APR_RETRIEVE_OPTIONAL_FN(ssl_is_https);
+    othermod_var_lookup = APR_RETRIEVE_OPTIONAL_FN(ssl_var_lookup);
 
     APR_REGISTER_OPTIONAL_FN(ssl_is_https);
     APR_REGISTER_OPTIONAL_FN(ssl_var_lookup);
@@ -241,6 +249,15 @@ char *ssl_var_lookup(apr_pool_t *p, server_rec *s, conn_rec *c, request_rec *r, 
      */
     if (result == NULL && c != NULL) {
         SSLConnRec *sslconn = myConnConfig(c);
+
+        if (strlen(var) > 4 && strcEQn(var, "SSL_", 4)
+            && (!sslconn || !sslconn->ssl) && othermod_var_lookup) {
+            /* For an SSL_* variable, if mod_ssl is not enabled for
+             * this connection and another SSL module is present, pass
+             * through to that module. */
+            return othermod_var_lookup(p, s, c, r, var);
+        }
+
         if (strlen(var) > 4 && strcEQn(var, "SSL_", 4)
             && sslconn && sslconn->ssl)
             result = ssl_var_lookup_ssl(p, c, r, var+4);
