@@ -23,6 +23,15 @@ APR_DECLARE(apr_status_t) apr_file_buffer_set(apr_file_t *file,
 {
     apr_status_t rv;
 
+    if (!file->mutex) {
+        rv = apr_thread_mutex_create(&file->mutex, 
+                                     APR_THREAD_MUTEX_DEFAULT, file->pool);
+        if (rv) {
+            file->mutex = NULL;
+            return rv;
+        }
+    }
+
     apr_thread_mutex_lock(file->mutex);
  
     if(file->buffered) {
