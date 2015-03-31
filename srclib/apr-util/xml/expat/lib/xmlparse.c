@@ -6076,12 +6076,13 @@ poolGrow(STRING_POOL *pool)
   }
   if (pool->blocks && pool->start == pool->blocks->s) {
     int blockSize = (pool->end - pool->start)*2;
-    pool->blocks = (BLOCK *)
+    BLOCK *temp = (BLOCK *)
       pool->mem->realloc_fcn(pool->blocks,
                              (offsetof(BLOCK, s)
                               + blockSize * sizeof(XML_Char)));
-    if (pool->blocks == NULL)
+    if (temp == NULL)
       return XML_FALSE;
+    pool->blocks = temp;
     pool->blocks->size = blockSize;
     pool->ptr = pool->blocks->s + (pool->ptr - pool->start);
     pool->start = pool->blocks->s;
