@@ -276,7 +276,7 @@ int ssl_init_Module(apr_pool_t *p, apr_pool_t *plog,
         return HTTP_INTERNAL_SERVER_ERROR;
     }
 #ifdef HAVE_OCSP_STAPLING
-    ssl_stapling_ex_init();
+    ssl_stapling_certinfo_hash_init(p);
 #endif
 
     /*
@@ -899,6 +899,8 @@ static void ssl_init_ctx(server_rec *s,
 }
 
 static int ssl_server_import_cert(server_rec *s,
+                                  apr_pool_t *p,
+                                  apr_pool_t *ptemp,
                                   modssl_ctx_t *mctx,
                                   const char *id,
                                   int idx)
@@ -933,7 +935,7 @@ static int ssl_server_import_cert(server_rec *s,
 
 #ifdef HAVE_OCSP_STAPLING
     if ((mctx->pkp == FALSE) && (mctx->stapling_enabled == TRUE)) {
-        if (!ssl_stapling_init_cert(s, mctx, cert)) {
+        if (!ssl_stapling_init_cert(s, p, ptemp, mctx, cert)) {
             ap_log_error(APLOG_MARK, APLOG_ERR, 0, s, APLOGNO(02235)
                          "Unable to configure server certificate for stapling");
         }
@@ -1081,10 +1083,10 @@ static void ssl_init_server_certs(server_rec *s,
     ecc_id = ssl_asn1_table_keyfmt(ptemp, vhost_id, SSL_AIDX_ECC);
 #endif
 
-    have_rsa = ssl_server_import_cert(s, mctx, rsa_id, SSL_AIDX_RSA);
-    have_dsa = ssl_server_import_cert(s, mctx, dsa_id, SSL_AIDX_DSA);
+    have_rsa = ssl_server_import_cert(s, p, ptemp, mctx, rsa_id, SSL_AIDX_RSA);
+    have_dsa = ssl_server_import_cert(s, p, ptemp, mctx, dsa_id, SSL_AIDX_DSA);
 #ifndef OPENSSL_NO_EC
-    have_ecc = ssl_server_import_cert(s, mctx, ecc_id, SSL_AIDX_ECC);
+    have_ecc = ssl_server_import_cert(s, p, ptemp, mctx, ecc_id, SSL_AIDX_ECC);
 #endif
 
     if (!(have_rsa || have_dsa

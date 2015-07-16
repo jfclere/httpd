@@ -863,8 +863,8 @@ const char *ssl_cmd_SSLStaplingFakeTryLater(cmd_parms *, void *, int);
 const char *ssl_cmd_SSLStaplingResponderTimeout(cmd_parms *, void *, const char *);
 const char  *ssl_cmd_SSLStaplingForceURL(cmd_parms *, void *, const char *);
 void         modssl_init_stapling(server_rec *, apr_pool_t *, apr_pool_t *, modssl_ctx_t *);
-void         ssl_stapling_ex_init(void);
-int          ssl_stapling_init_cert(server_rec *s, modssl_ctx_t *mctx, X509 *x);
+void         ssl_stapling_certinfo_hash_init(apr_pool_t *);
+int          ssl_stapling_init_cert(server_rec *s, apr_pool_t *, apr_pool_t *, modssl_ctx_t *mctx, X509 *x);
 #endif
 #ifndef OPENSSL_NO_SRP
 int          ssl_callback_SRPServerParams(SSL *, int *, void *);
