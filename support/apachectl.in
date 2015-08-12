@@ -41,6 +41,9 @@ ARGV="$@"
 # |||||||||||||||||||| START CONFIGURATION SECTION  ||||||||||||||||||||
 # --------------------                              --------------------
 # 
+# LD_LIBRARY_PATH for solaris user install
+LD_LIBRARY_PATH=@ld_library_path@
+export LD_LIBRARY_PATH
 # the path to your httpd binary, including options if necessary
 HTTPD="@exp_sbindir@/@progname@"
 ROOTDIR="-d @installroot@/etc/httpd"
