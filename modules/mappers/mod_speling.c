@@ -22,7 +22,6 @@
 #define APR_WANT_STRFUNC
 #include "apr_want.h"
 
-#define WANT_BASENAME_MATCH
 
 #include "httpd.h"
 #include "http_core.h"
@@ -60,6 +59,7 @@ module AP_MODULE_DECLARE_DATA speling_module;
 typedef struct {
     int enabled;
     int case_only;
+    int basename_match;
 } spconfig;
 
 /*
@@ -77,6 +77,7 @@ static void *mkconfig(apr_pool_t *p)
 
     cfg->enabled = 0;
     cfg->case_only = 0;
+    cfg->basename_match = 1;
     return cfg;
 }
 
@@ -109,6 +110,9 @@ static const command_rec speling_cmds[] =
     AP_INIT_FLAG("CheckCaseOnly", ap_set_flag_slot,
                   (void*)APR_OFFSETOF(spconfig, case_only), OR_OPTIONS,
                  "whether or not to fix only miscapitalized requests"),
+    AP_INIT_FLAG("CheckBasenameMatch", ap_set_flag_slot,
+                  (void*)APR_OFFSETOF(spconfig, basename_match), OR_OPTIONS,
+                 "whether or not to find alternatives with same basename"),
     { NULL }
 };
 
@@ -329,9 +333,11 @@ static int check_speling(request_rec *r)
          * > anything matching that spelling. With the extension-munging,
          * > it would locate "foobar.html". Not perfect, but I ran into
          * > that problem when I first wrote the module.
+         *
+         * Making it configurable lets everybody pick what suits best
+         * without breaking compatibility (19-Dec-2014)
          */
-        else {
-#ifdef WANT_BASENAME_MATCH
+        else if (cfg->basename_match == 1) {
             /*
              * Okay... we didn't find anything. Now we take out the hard-core
              * power tools. There are several cases here. Someone might have
@@ -356,7 +362,6 @@ static int check_speling(request_rec *r)
                 sp_new->name = apr_pstrdup(r->pool, dirent.name);
                 sp_new->quality = SP_VERYDIFFERENT;
             }
-#endif
         }
     }
     apr_dir_close(dir);
