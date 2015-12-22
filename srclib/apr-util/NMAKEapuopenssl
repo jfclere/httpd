@@ -1,0 +1,94 @@
+# Copyright 2001-2015 The Apache Software Foundation or its licensors, as
+# applicable.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# ====================================================================
+#
+# NMAKEmakefile   Master apr-util crypto OpenSSL module makefile.
+# Usage:
+#                 DLL=1     Build DLL version
+#                 DEBUG=1   Build DEBUG version of APR
+#
+# Originally contributed by Mladen Turk <mturk redhat.com>
+#
+# ====================================================================
+#
+
+
+!IF !DEFINED(APR_DECLARE_STATIC) || "$(APR_DECLARE_STATIC)" == ""
+TARGET = DLL
+!ELSE
+TARGET = LIB
+!ENDIF
+PROJECT = apr_crypto_openssl-1
+
+!IF !DEFINED(SRCDIR) || "$(SRCDIR)" == ""
+SRCDIR = .
+!ENDIF
+
+!include <NMAKEbuild.inc>
+!include <NMAKEhttpd.inc>
+
+!IFNDEF WITH_APR
+WITH_APR=..\apr
+!ENDIF
+
+SSL_LIBS = libeay32.lib ssleay32.lib
+CFLAGS = $(CFLAGS) -DAPR_DECLARE_EXPORT -DAPU_DECLARE_EXPORT -DAPU_DSO_MODULE_BUILD \
+	-DZLIB_WINAPI -DOPENSSL_NO_IDEA \
+	-DOPENSSL_NO_RC5 -DOPENSSL_NO_MDC2 -DOPENSSL_NO_SRP -DOPENSSL_NO_KRB5 \
+	-DOPENSSL_NO_JPAKE -DOPENSSL_NO_EC2M -DOPENSSL_NO_STATIC_ENGINE -DHAVE_OPENSSL \
+	-DHAVE_SSL_SET_STATE=1
+
+LDIRS = /libpath:"$(WITH_APR)\$(WORKDIR)" /libpath:"$(WORKDIR)" /libpath:"$(EXTLIBPATH)"
+LFLAGS = $(LFLAGS) user32.lib psapi.lib gdi32.lib shlwapi.lib wldap32.lib ole32.lib  $(LIBAPR) $(LIBAPU) $(SSL_LIBS)
+
+INCLUDES = -I$(SRCDIR)\include -I$(SRCDIR)\include\private -I$(WITH_APR)\include -I$(EXTINCPATH)
+PDBFLAGS = -Fo$(WORKDIR)\ -Fd$(WORKDIR)\$(PROJECT)-src
+OBJECTS = \
+	$(WORKDIR)\apr_crypto_openssl.obj
+
+!IF "$(TARGET)" == "DLL"
+BUILDBIN = $(WORKDIR)\$(PROJECT).dll
+BUILDPDB = $(WORKDIR)\$(PROJECT).pdb
+BUILDRES = $(WORKDIR)\$(PROJECT).res
+BUILDMFT = $(BUILDBIN).manifest
+!ENDIF
+
+all : $(BUILDINS) $(WORKDIR) $(HEADERS) $(BUILDBIN)
+	@echo Building APR-UTIL crypto OpenSSL module ...
+
+$(WORKDIR) :
+	@$(MAKEWORKDIR)
+
+{$(SRCDIR)\crypto}.c{$(WORKDIR)}.obj:
+	$(CC) $(CFLAGS) $(INCLUDES) $(PDBFLAGS) $<
+
+!IF "$(TARGET)" == "DLL"
+$(BUILDRES): libaprutil.rc $(HEADERS)
+	$(RC) $(RCFLAGS) /i "$(WITH_APR)\include" /i "$(SRCDIR)\include" /d "APU_VERSION_ONLY" /d DLL_NAME="$(PROJECT)" /fo $(BUILDRES) libaprutil.rc
+$(BUILDBIN): $(WORKDIR) $(HEADERS) $(OBJECTS) $(BUILDRES)
+	$(LINK) $(LFLAGS) $(OBJECTS) $(BUILDRES) $(LIBS) $(LDIRS) /pdb:$(BUILDPDB) /out:$(BUILDBIN)
+	IF EXIST $(BUILDMFT) \
+		mt -nologo -manifest $(BUILDMFT) -outputresource:$(BUILDBIN);2
+!ENDIF
+
+clean:
+	@$(CLEANTARGET)
+
+!IF "$(TARGET)" == "DLL"
+install: all
+!ELSE
+install:
+!ENDIF

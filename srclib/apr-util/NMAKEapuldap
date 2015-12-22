@@ -1,0 +1,103 @@
+# Copyright 2001-2009 The Apache Software Foundation or its licensors, as
+# applicable.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# ====================================================================
+#
+# NMAKEmakefile   Master apr-util ldap module makefile.
+# Usage:
+#                 DLL=1     Build DLL version
+#                 DEBUG=1   Build DEBUG version of APR
+#
+# Originally contributed by Mladen Turk <mturk redhat.com>
+#
+# ====================================================================
+#
+
+
+!IF !DEFINED(APR_DECLARE_STATIC) || "$(APR_DECLARE_STATIC)" == ""
+TARGET=DLL
+CFLAGS = -DAPR_DECLARE_EXPORT -DAPU_DECLARE_EXPORT $(CFLAGS)
+PROJECT = apr_ldap-1
+APR_LIB = libapr-1.lib
+APU_LIB = libaprutil-1.lib
+!ENDIF
+
+!IF !DEFINED(SRCDIR) || "$(SRCDIR)" == ""
+SRCDIR = .
+!ENDIF
+
+!include <NMAKEbuild.inc>
+!include <NMAKEhttpd.inc>
+
+!IFNDEF WITH_APR
+WITH_APR=..\apr
+!ENDIF
+
+LDIRS = /libpath:"$(WITH_APR)\$(WORKDIR)" /libpath:"$(WORKDIR)"
+
+!IF "$(TARGET)" == "DLL"
+LFLAGS = $(LFLAGS) user32.lib psapi.lib gdi32.lib shlwapi.lib wldap32.lib ole32.lib $(APR_LIB) $(APU_LIB)
+!ENDIF
+
+INCLUDES = -I$(SRCDIR)\include -I$(SRCDIR)\include\private -I$(WITH_APR)\include
+PDBFLAGS = -Fo$(WORKDIR)\ -Fd$(WORKDIR)\$(PROJECT)-src
+OBJECTS = \
+	$(WORKDIR)\apr_ldap_init.obj \
+	$(WORKDIR)\apr_ldap_option.obj \
+	$(WORKDIR)\apr_ldap_rebind.obj
+
+HEADERS = \
+	$(SRCDIR)\include\apr_ldap.h \
+
+!IF "$(TARGET)" == "DLL"
+BUILDBIN = $(WORKDIR)\$(PROJECT).dll
+BUILDPDB = $(WORKDIR)\$(PROJECT).pdb
+BUILDRES = $(WORKDIR)\$(PROJECT).res
+BUILDMFT = $(BUILDBIN).manifest
+!ENDIF
+
+all : $(BUILDINS) $(WORKDIR) $(HEADERS) $(BUILDBIN)
+	@echo Building APR-UTIL ldap ...
+
+$(WORKDIR) :
+	@$(MAKEWORKDIR)
+
+.SUFFIXES : .hw .h.in
+
+{$(SRCDIR)\include}.hw{$(SRCDIR)\include}.h:
+	@copy /Y $< $@ >NUL
+
+{$(SRCDIR)\ldap}.c{$(WORKDIR)}.obj:
+	$(CC) $(CFLAGS) $(INCLUDES) $(PDBFLAGS) $<
+
+$(OBJECTS): $(SRCDIR)\include\*.h $(SRCDIR)\include\private\*.h
+
+!IF "$(TARGET)" == "DLL"
+$(BUILDRES): libaprutil.rc $(HEADERS)
+	$(RC) $(RCFLAGS) /i "$(WITH_APR)\include" /i "$(SRCDIR)\include" /d "APU_VERSION_ONLY" /d DLL_NAME="$(PROJECT)" /fo $(BUILDRES) libaprutil.rc
+$(BUILDBIN): $(WORKDIR) $(HEADERS) $(OBJECTS) $(BUILDRES)
+	$(LINK) $(LFLAGS) $(OBJECTS) $(BUILDRES) $(LIBS) $(LDIRS) /pdb:$(BUILDPDB) /out:$(BUILDBIN)
+	IF EXIST $(BUILDMFT) \
+		mt -nologo -manifest $(BUILDMFT) -outputresource:$(BUILDBIN);2
+!ENDIF
+
+clean:
+	@$(CLEANTARGET)
+
+!IF "$(TARGET)" == "DLL"
+install: all
+!ELSE
+install:
+!ENDIF
